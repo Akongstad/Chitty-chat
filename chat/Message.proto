@@ -1,0 +1,16 @@
+syntax = "proto3";
+option go_package = "/Users/andreaskongstad/Documents/goLang/Chitty-chat/Chitty-chat/chat";
+package chat;
+
+
+message Message{
+    string body = 1;
+    string client = 2;
+    int32 timestamp = 3;
+
+}
+service ChatService{
+    rpc Publish(Message) returns (Message){}
+    rpc Broadcast(Message) returns (Message){}
+    
+}
