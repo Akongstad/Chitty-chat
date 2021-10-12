@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 	"time"
-
+	"github.com/Akongstad/Chitty-chat/chat"
 	"google.golang.org/grpc"
 )
 
@@ -19,5 +19,6 @@ func main() {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	//c := course_proto.NewCourseServiceClient(conn)
+	//c := chat.NewChatServiceClient(conn)
+	
 }

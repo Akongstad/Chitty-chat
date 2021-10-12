@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"net"
-	"github.com/Akongstad/Chitty-chat"
+	"github.com/Akongstad/Chitty-chat/chat"
 
 	"google.golang.org/grpc"
 )
@@ -12,7 +12,7 @@ const (
 	port = ":9000"
 )
 type Server struct{
-
+	chat.UnimplementedChatServiceServer
 }
 
 func main() {
@@ -20,12 +20,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen port 9000: %v", err)
 	}
-	s := server{}
+	s := Server{}
 	grpcServer := grpc.NewServer()
 
 	
 
-	//Message .RegisterCourseServiceServer(grpcServer, &s)
+	chat.RegisterChatServiceServer(grpcServer, &s)
 
 	log.Printf("server listening at %v", lis.Addr())
 	if err := grpcServer.Serve(lis); err != nil {
