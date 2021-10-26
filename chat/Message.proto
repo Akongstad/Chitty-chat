@@ -2,15 +2,25 @@ syntax = "proto3";
 option go_package = "/Users/andreaskongstad/Documents/goLang/Chitty-chat/Chitty-chat/chat";
 package chat;
 
+message User{
+    string name = 1;
+}
 
 message Message{
-    string body = 1;
-    string client = 2;
-    int32 timestamp = 3;
-
+    int32 id = 1;
+    string body = 2;
+    User user = 3;
+    int32 timestamp = 4;
 }
+
+message Connect{
+    User user = 1;
+    bool active = 2;
+}
+message Close{}
+
 service ChatService{
+    rpc OpenConnection(Connect) returns (stream Message){}
     rpc Publish(Message) returns (Message){}
-    rpc Broadcast(Message) returns (Message){}
-    
+    rpc Broadcast(Message) returns (Close){}
 }
