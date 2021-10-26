@@ -19,7 +19,7 @@ type Connection struct {
 	stream chat.ChatService_OpenConnectionServer
 	id     string
 	active bool
-	err    chan error
+	error  chan error
 }
 
 type Server struct {
@@ -29,24 +29,13 @@ type Server struct {
 
 func (s *Server) Publish(ctx context.Context, msg *chat.Message) (*chat.Message, error) {
 	log.Printf("Server received published message %s", msg.GetBody())
-	log.Printf("Published at: %s", msg.GetTimestamp())
-	log.Printf("Client:", msg.GetUser())
+	log.Printf("Published at: %d", msg.GetUser().GetTimestamp())
+	log.Printf("From client: %s", msg.GetUser().GetName())
 	var reply = msg
 	//TODO
-	reply.Timestamp += 1
+	reply.GetUser().Timestamp += 1
+	s.Broadcast(ctx, msg)
 	return reply, nil
-}
-
-func (s *Server) OpenConnection(connect *chat.Connect, stream chat.ChatService_OpenConnectionServer) error {
-	conn := &Connection{
-		active: true,
-		stream: stream,
-		id:     connect.User.Name,
-		err:    make(chan error),
-	}
-	s.Connection = append(s.Connection, conn)
-
-	return <-conn.err
 }
 
 func (s *Server) Broadcast(ctx context.Context, msg *chat.Message) (*chat.Close, error) {
@@ -58,28 +47,45 @@ func (s *Server) Broadcast(ctx context.Context, msg *chat.Message) (*chat.Close,
 
 		go func(msg *chat.Message, conn *Connection) {
 			defer wait.Done()
-			if conn.active {
-				//passes message back to the client
-				err := conn.stream.Send((msg))
-				//sæt ind i log her
 
+			if conn.active {
+
+				err := conn.stream.Send(msg)
+				log.Printf("Broadcasting message to: %s", conn.id)
 				if err != nil {
 					conn.active = false
-					conn.err <- err
+					conn.error <- err
 				}
-
 			}
 		}(msg, conn)
 	}
 
 	go func() {
-		//makes sure that the wait group will wait for other goroutines to exit
 		wait.Wait()
 		close(done)
 	}()
+
 	<-done
 	return &chat.Close{}, nil
+}
 
+func (s *Server) OpenConnection(connect *chat.Connect, stream chat.ChatService_OpenConnectionServer) error {
+	conn := &Connection{
+		stream: stream,
+		active: true,
+		id:     connect.User.Name,
+		error:  make(chan error),
+	}
+
+	s.Connection = append(s.Connection, conn)
+
+	joinMessage := chat.Message{
+		Body: "New user has connected",
+		User: connect.GetUser(),
+	}
+	s.Broadcast(context.Background(), &joinMessage)
+
+	return <-conn.error
 }
 
 func main() {
@@ -88,16 +94,17 @@ func main() {
 		Connection:                     connections,
 		UnimplementedChatServiceServer: chat.UnimplementedChatServiceServer{},
 	}
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("Failed to listen port 9000: %v", err)
-	}
 
 	grpcServer := grpc.NewServer()
 
-	chat.RegisterChatServiceServer(grpcServer, s)
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("Failed to listen port: %v", err)
+	}
 
 	log.Printf("server listening at %v", lis.Addr())
+
+	chat.RegisterChatServiceServer(grpcServer, s)
 
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed serve server: %v", err)

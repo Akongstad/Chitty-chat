@@ -18,11 +18,16 @@ const (
 )
 
 var client chat.ChatServiceClient
-var wait sync.WaitGroup
+var wait *sync.WaitGroup
+
+func init(){
+	wait = &sync.WaitGroup{}
+}
 
 func connect(user *chat.User) (error){
 	var streamError error
-	log.Println(*user)
+
+	log.Println(&user ," Connecting")
 	stream, err := client.OpenConnection(context.Background(), &chat.Connect{
 		User: user,
 		Active: true,
@@ -34,64 +39,76 @@ func connect(user *chat.User) (error){
 	}
 
 	wait.Add(1)
-
-	go func(str chat.ChatService_OpenConnectionClient) {
+	go func(str chat.ChatService_OpenConnectionClient){
 		defer wait.Done()
 
-		for  {
+		for{
 			msg, err := str.Recv()
-
-			if err != nil {
+			if(err != nil){
+				log.Fatalf("Error reading message, %v", err)
 				streamError = err
-				log.Fatalf("Error reading message: %v", err)
 				break
 			}
 
-			log.Printf("%v : %s\n", msg.User.GetName(), msg.GetBody())
+			log.Printf("%v: %s,(%d)", msg.GetUser().GetName(), msg.GetBody(), msg.GetUser.GetTimestamp())
 		}
 	}(stream)
 	
-	wait.Add(1)
-	go func() {
-   		defer wait.Done()
-   		scanner := bufio.NewScanner(os.Stdin)
-   		msgID := rand.Intn(99)
-   		for scanner.Scan() {
-			msg := &chat.Message{
-				Id: int32(msgID),
-				User: user,
-				Body: scanner.Text(),
-				Timestamp: 1,
-			}
-
-			_, err := client.Broadcast(context.Background(), msg)
-			if err != nil {
-				log.Fatalf("Error sending message: %v", err)
-				break
-			}
-		}
-	 }()
-	 go func() {
-	   wait.Wait()
-	   //close(done)
-	}()
-	//<- done  
 	return streamError
-}
+} 
 
 func main() {
-	// Set up a connection to the server.
-	clientName := flag.String("X", "Anonymous", "")
-	flag.Parse();
+	
+	//init channel
+	done := make(chan int)
+	
+	//Get User info
+	clientName := flag.String("U", "Anonymous", "ClientName")
+	flag.Parse()
+	userId := rand.Intn(999)
 	clientUser := &chat.User{
+		Id: int32(userId),
 		Name: *clientName,
 	}
 
+	// Set up a connection to the server.
 	conn, err := grpc.Dial(port, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("could not connect: %v", err)
 	}
+
 	client = chat.NewChatServiceClient(conn)
+	
+	//Create stream
+	
+	log.Println(*clientName, " Connecting")
 	connect(clientUser)
 
+	//Send messages
+	wait.Add(1)
+
+	go func(){
+		defer wait.Done()
+
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan(){
+			msg := &chat.Message{
+				Body: scanner.Text(),
+				User: clientUser,
+			}
+
+			_, err := client.Publish(context.Background(), msg)
+			if err != nil{
+				log.Printf("Error publishing Message: %v", err)
+				break
+			}
+		}
+	}()
+
+	go func(){
+		wait.Wait()
+		close(done)
+	}()
+
+	<- done
 }
