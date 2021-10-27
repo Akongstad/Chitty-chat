@@ -28,9 +28,12 @@ type Server struct {
 }
 
 func (s *Server) Publish(ctx context.Context, msg *chat.Message) (*chat.Message, error) {
-	log.Printf("Server received published message %s", msg.GetBody())
-	log.Printf("Published at: %d", msg.GetUser().GetTimestamp())
-	log.Printf("From client: %s", msg.GetUser().GetName())
+	log.Print("__________________________________")
+	log.Printf("Server received published message: '%s', (%d) from client: %s", 
+		msg.GetBody(), 
+		msg.GetUser().GetTimestamp(), 
+		msg.GetUser().GetName())
+		
 	var reply = msg
 	//TODO
 	reply.GetUser().Timestamp += 1
@@ -80,9 +83,11 @@ func (s *Server) OpenConnection(connect *chat.Connect, stream chat.ChatService_O
 	s.Connection = append(s.Connection, conn)
 
 	joinMessage := chat.Message{
-		Body: "New user has connected",
-		User: connect.GetUser(),
+		Body: connect.GetUser().GetName() + " has succesfully connected",
+		User: &chat.User{Id: 1000, Name: "Server", Timestamp: connect.GetUser().GetTimestamp()+1},
 	}
+	log.Print("__________________________________")
+	log.Printf("%v: %s,(%d)", joinMessage.GetUser().GetName(), joinMessage.GetBody(), joinMessage.GetUser().GetTimestamp())
 	s.Broadcast(context.Background(), &joinMessage)
 
 	return <-conn.error

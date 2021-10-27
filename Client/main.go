@@ -27,7 +27,6 @@ func init(){
 func connect(user *chat.User) (error){
 	var streamError error
 
-	log.Println(&user ," Connecting")
 	stream, err := client.OpenConnection(context.Background(), &chat.Connect{
 		User: user,
 		Active: true,
@@ -50,7 +49,7 @@ func connect(user *chat.User) (error){
 				break
 			}
 
-			log.Printf("%v: %s,(%d)", msg.GetUser().GetName(), msg.GetBody(), msg.GetUser.GetTimestamp())
+			log.Printf("%v: %s,(%d)", msg.GetUser().GetName(), msg.GetBody(), msg.GetUser().GetTimestamp())
 		}
 	}(stream)
 	
