@@ -3,7 +3,7 @@ option go_package = "/Users/andreaskongstad/Documents/goLang/Chitty-chat/Chitty-
 package chat;
 
 message User{
-    int32 id = 1;
+    int64 id = 1;
     string name = 2;
     int32 timestamp = 3;
 }
@@ -11,6 +11,7 @@ message User{
 message Message{
     string body = 1;
     User user = 2;
+    int32 timestamp =3;
 }
 
 message Connect{
@@ -21,6 +22,7 @@ message Close{}
 
 service ChatService{
     rpc OpenConnection(Connect) returns (stream Message){}
+    rpc CloseConnection(User) returns (Close){}
     rpc Publish(Message) returns (Message){}
     rpc Broadcast(Message) returns (Close){}
 }

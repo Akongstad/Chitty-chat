@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChatServiceClient interface {
 	OpenConnection(ctx context.Context, in *Connect, opts ...grpc.CallOption) (ChatService_OpenConnectionClient, error)
+	CloseConnection(ctx context.Context, in *User, opts ...grpc.CallOption) (*Close, error)
 	Publish(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Message, error)
 	Broadcast(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Close, error)
 }
@@ -63,6 +64,15 @@ func (x *chatServiceOpenConnectionClient) Recv() (*Message, error) {
 	return m, nil
 }
 
+func (c *chatServiceClient) CloseConnection(ctx context.Context, in *User, opts ...grpc.CallOption) (*Close, error) {
+	out := new(Close)
+	err := c.cc.Invoke(ctx, "/chat.ChatService/CloseConnection", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) Publish(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Message, error) {
 	out := new(Message)
 	err := c.cc.Invoke(ctx, "/chat.ChatService/Publish", in, out, opts...)
@@ -86,6 +96,7 @@ func (c *chatServiceClient) Broadcast(ctx context.Context, in *Message, opts ...
 // for forward compatibility
 type ChatServiceServer interface {
 	OpenConnection(*Connect, ChatService_OpenConnectionServer) error
+	CloseConnection(context.Context, *User) (*Close, error)
 	Publish(context.Context, *Message) (*Message, error)
 	Broadcast(context.Context, *Message) (*Close, error)
 	mustEmbedUnimplementedChatServiceServer()
@@ -97,6 +108,9 @@ type UnimplementedChatServiceServer struct {
 
 func (UnimplementedChatServiceServer) OpenConnection(*Connect, ChatService_OpenConnectionServer) error {
 	return status.Errorf(codes.Unimplemented, "method OpenConnection not implemented")
+}
+func (UnimplementedChatServiceServer) CloseConnection(context.Context, *User) (*Close, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CloseConnection not implemented")
 }
 func (UnimplementedChatServiceServer) Publish(context.Context, *Message) (*Message, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Publish not implemented")
@@ -136,6 +150,24 @@ type chatServiceOpenConnectionServer struct {
 
 func (x *chatServiceOpenConnectionServer) Send(m *Message) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func _ChatService_CloseConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(User)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CloseConnection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/chat.ChatService/CloseConnection",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CloseConnection(ctx, req.(*User))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ChatService_Publish_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -181,6 +213,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "chat.ChatService",
 	HandlerType: (*ChatServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CloseConnection",
+			Handler:    _ChatService_CloseConnection_Handler,
+		},
 		{
 			MethodName: "Publish",
 			Handler:    _ChatService_Publish_Handler,
