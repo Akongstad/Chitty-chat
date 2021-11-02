@@ -30,10 +30,12 @@ type Server struct {
 	Connections []*Connection
 	chat.UnimplementedChatServiceServer
 	ServerTimestamp int32
+	lock sync.Mutex
 }
 
 func (s *Server) Publish(ctx context.Context, msg *chat.Message) (*chat.Message, error) {
-
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	s.ServerTimestamp = Max(s.ServerTimestamp, msg.Timestamp)
 
 	log.Print("__________________________________")
@@ -142,6 +144,7 @@ func main() {
 		Connections:                    connections,
 		UnimplementedChatServiceServer: chat.UnimplementedChatServiceServer{},
 		ServerTimestamp:                0,
+		lock: sync.Mutex{},
 	}
 	// If the file doesn't exist, create it or append to the file. For append functionality : os.O_APPEND
 	file, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)

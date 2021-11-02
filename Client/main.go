@@ -82,7 +82,6 @@ func main() {
 	client = chat.NewChatServiceClient(conn)
 
 	//Create stream
-
 	log.Println(*clientName, " Connecting")
 	connect(clientUser)
 
